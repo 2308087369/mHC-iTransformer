@@ -1,12 +1,17 @@
 import os
 import numpy as np
 import pandas as pd
+import glob
+import re
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
-from models.utils.timefeatures import time_features
-from models.utils.augmentation import run_augmentation_single
+from utils.timefeatures import time_features
+from data_provider.m4 import M4Dataset, M4Meta
+from data_provider.uea import subsample, interpolate_missing, Normalizer
+from sktime.datasets import load_from_tsfile_to_dataframe
 import warnings
+from utils.augmentation import run_augmentation_single
 
 warnings.filterwarnings('ignore')
 
@@ -79,7 +84,7 @@ class Dataset_ETT_hour(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
 
-        if self.set_type == 0 and hasattr(self.args, 'augmentation_ratio') and self.args.augmentation_ratio > 0:
+        if self.set_type == 0 and self.args.augmentation_ratio > 0:
             self.data_x, self.data_y, augmentation_tags = run_augmentation_single(self.data_x, self.data_y, self.args)
             
         self.data_stamp = data_stamp
@@ -174,7 +179,7 @@ class Dataset_ETT_minute(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
 
-        if self.set_type == 0 and hasattr(self.args, 'augmentation_ratio') and self.args.augmentation_ratio > 0:
+        if self.set_type == 0 and self.args.augmentation_ratio > 0:
             self.data_x, self.data_y, augmentation_tags = run_augmentation_single(self.data_x, self.data_y, self.args)
 
         self.data_stamp = data_stamp
@@ -277,7 +282,7 @@ class Dataset_Custom(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
 
-        if self.set_type == 0 and hasattr(self.args, 'augmentation_ratio') and self.args.augmentation_ratio > 0:
+        if self.set_type == 0 and self.args.augmentation_ratio > 0:
             self.data_x, self.data_y, augmentation_tags = run_augmentation_single(self.data_x, self.data_y, self.args)
 
         self.data_stamp = data_stamp
@@ -526,47 +531,3 @@ class Dataset_Climate(Dataset):
 
     def inverse_transform(self, data):
         return self.scaler.inverse_transform(data)
-
-
-data_dict = {
-    'ETTh1': Dataset_ETT_hour,
-    'ETTh2': Dataset_ETT_hour,
-    'ETTm1': Dataset_ETT_minute,
-    'ETTm2': Dataset_ETT_minute,
-    'custom': Dataset_Custom,
-    'Solar': Dataset_Solar,
-    'PEMS': Dataset_PEMS,
-    'Climate': Dataset_Climate,
-}
-
-
-def data_provider(args, flag):
-    Data = data_dict[args.data]
-    timeenc = 0 if args.embed != 'timeF' else 1
-
-    shuffle_flag = False if flag == 'test' else True
-    drop_last = False
-    batch_size = args.batch_size
-    freq = args.freq
-
-    data_set = Data(
-        args = args,
-        root_path=args.root_path,
-        data_path=args.data_path,
-        flag=flag,
-        size=[args.seq_len, args.label_len, args.pred_len],
-        features=args.features,
-        target=args.target,
-        timeenc=timeenc,
-        freq=freq,
-        seasonal_patterns=args.seasonal_patterns
-    )
-    print(flag, len(data_set))
-    data_loader = DataLoader(
-        data_set,
-        batch_size=batch_size,
-        shuffle=shuffle_flag,
-        num_workers=args.num_workers,
-        drop_last=drop_last)
-
-    return data_set, data_loader
