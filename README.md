@@ -45,7 +45,14 @@ $$H_{l+1} = H_l \cdot W + \phi \cdot \text{Sublayer}(\text{Agg}(H_l))$$
 
 以下是 MHC-iTransformer 与基准模型的预测效果对比示例：
 
-![模型对比结果](results/q2_final_itransformer_comparison.png)
+![模型对比结果](figures/comparison_nrmse.png)
+![alt text](figures/Electricity_prediction.png)
+![alt text](figures/ETTh2_prediction.png)
+![alt text](figures/ETTm1_prediction.png)
+![alt text](figures/Traffic_prediction.png)
+![alt text](figures/ETTm2_prediction.png)
+![alt text](figures/Exchange_prediction.png)
+![alt text](figures/Weather_prediction.png)
 
 ## 项目结构
 
