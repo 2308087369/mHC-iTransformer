@@ -105,5 +105,6 @@ python main.py --model MHC_iTransformer --data Traffic --pca_dim 30 ...
 
 ## 注意事项
 
-- **数据集**: 本项目使用的数据集属于闭源内容。如需运行，请将相关 CSV 文件放置于 `datasets/` 目录下的相应子目录中。
+- **数据集**: 本项目使用的数据集置于 `datasets/` 目录下的相应子目录中，全部来自于iTransformer项目整理（感谢）,数据集过大无法上传至GitHub,请在运行前手动下载并放置于对应目录。
+下载方式请见：iTransformer项目https://drive.google.com/file/d/1l51QsKvQPcqILT3DwfjCgx8Dsg2rpjot/view。请下载后放到工作区的datasets/目录下，并利用unzip解压缩，得到datasets/iTransformer_datasets目录，存放所有数据集。
 - **计算资源**: 建议在支持 CUDA 的 GPU 环境下运行。对于高维数据集，建议开启 PCA 降维。
