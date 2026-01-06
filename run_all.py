@@ -4,23 +4,25 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+
 # Defined datasets to run
 datasets = [
-    # (data_name, root_path, data_path, features_count, is_custom, freq)
-    ('ETTh2', './datasets/iTransformer_datasets/ETT-small/', 'ETTh2.csv', 7, False, 'h'),
-    ('ETTm1', './datasets/iTransformer_datasets/ETT-small/', 'ETTm1.csv', 7, False, 't'),
-    ('ETTm2', './datasets/iTransformer_datasets/ETT-small/', 'ETTm2.csv', 7, False, 't'),
-    ('Weather', './datasets/iTransformer_datasets/weather/', 'weather.csv', 21, True, 't'),
-    # ('Traffic', './datasets/iTransformer_datasets/traffic/', 'traffic.csv', 862, True, 'h'),
-    ('Electricity', './datasets/iTransformer_datasets/electricity/', 'electricity.csv', 321, True, 'h'),
-    ('Exchange', './datasets/iTransformer_datasets/exchange_rate/', 'exchange_rate.csv', 8, True, 'd'),
+    # (data_name, root_path, data_path, features_count, is_custom, freq, pca_dim)
+    ('ETTh2', './datasets/iTransformer_datasets/ETT-small/', 'ETTh2.csv', 7, False, 'h', None),
+    ('ETTm1', './datasets/iTransformer_datasets/ETT-small/', 'ETTm1.csv', 7, False, 't', None),
+    ('ETTm2', './datasets/iTransformer_datasets/ETT-small/', 'ETTm2.csv', 7, False, 't', None),
+    ('Weather', './datasets/iTransformer_datasets/weather/', 'weather.csv', 21, True, 't', None),
+    ('Traffic', './datasets/iTransformer_datasets/traffic/', 'traffic.csv', 30, True, 'h', 30),
+    ('Electricity', './datasets/iTransformer_datasets/electricity/', 'electricity.csv', 30, True, 'h', 30),
+    ('Exchange', './datasets/iTransformer_datasets/exchange_rate/', 'exchange_rate.csv', 8, True, 'd', None),
 ]
 
 models = ['TimeFilter', 'iTransformer', 'MHC_iTransformer', 'PatchTST', 'LSTM', 'DUET']
 
 results = {}
 
-def run_training(model, data_name, root, path, dim, is_custom, freq, batch_size):
+def run_training(model, data_name, root, path, dim, is_custom, freq, batch_size, pca_dim=None):
     data_arg = 'custom' if is_custom else data_name
     result_path = f'./results/{data_name}/{model}'
     cmd = [
@@ -42,6 +44,9 @@ def run_training(model, data_name, root, path, dim, is_custom, freq, batch_size)
         '--freq', freq,
         '--result_path', result_path
     ]
+    
+    if pca_dim is not None:
+        cmd.extend(['--pca_dim', str(pca_dim)])
     
     start_time = time.time()
     try:
@@ -159,13 +164,13 @@ def plot_metrics_comparison(results, models):
 print(f"{'Dataset':<15} | {'Model':<20} | {'MAE':<10} | {'MSE':<10} | {'RMSE':<10} | {'nRMSE':<10} | {'Time':<10} | {'Batch':<5}")
 print("-" * 110)
 
-for data_name, root, path, dim, is_custom, freq in datasets:
+for data_name, root, path, dim, is_custom, freq, pca_dim in datasets:
     results[data_name] = {}
     for model in models:
         current_batch_size = 64
         while current_batch_size >= 1:
             print(f"Running {model} on {data_name} (BS={current_batch_size})...", end=' ', flush=True)
-            res, error_log = run_training(model, data_name, root, path, dim, is_custom, freq, current_batch_size)
+            res, error_log = run_training(model, data_name, root, path, dim, is_custom, freq, current_batch_size, pca_dim)
             
             if res == "OOM":
                 print("OOM. Retrying with smaller batch size.")

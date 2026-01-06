@@ -4,6 +4,7 @@ import pandas as pd
 import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 from models.utils.timefeatures import time_features
 from models.utils.augmentation import run_augmentation_single
 import warnings
@@ -56,6 +57,14 @@ class Dataset_ETT_hour(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+
+        if hasattr(self.args, 'pca_dim') and self.args.pca_dim is not None and self.args.pca_dim < df_data.shape[1]:
+            print(f"Applying PCA to reduce dimensions from {df_data.shape[1]} to {self.args.pca_dim}")
+            train_data_for_pca = df_data.iloc[border1s[0]:border2s[0]]
+            pca = PCA(n_components=self.args.pca_dim)
+            pca.fit(train_data_for_pca.values)
+            df_data_pca = pca.transform(df_data.values)
+            df_data = pd.DataFrame(df_data_pca)
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -149,6 +158,14 @@ class Dataset_ETT_minute(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+
+        if hasattr(self.args, 'pca_dim') and self.args.pca_dim is not None and self.args.pca_dim < df_data.shape[1]:
+            print(f"Applying PCA to reduce dimensions from {df_data.shape[1]} to {self.args.pca_dim}")
+            train_data_for_pca = df_data.iloc[border1s[0]:border2s[0]]
+            pca = PCA(n_components=self.args.pca_dim)
+            pca.fit(train_data_for_pca.values)
+            df_data_pca = pca.transform(df_data.values)
+            df_data = pd.DataFrame(df_data_pca)
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
@@ -254,6 +271,14 @@ class Dataset_Custom(Dataset):
             df_data = df_raw[cols_data]
         elif self.features == 'S':
             df_data = df_raw[[self.target]]
+
+        if hasattr(self.args, 'pca_dim') and self.args.pca_dim is not None and self.args.pca_dim < df_data.shape[1]:
+            print(f"Applying PCA to reduce dimensions from {df_data.shape[1]} to {self.args.pca_dim}")
+            train_data_for_pca = df_data.iloc[border1s[0]:border2s[0]]
+            pca = PCA(n_components=self.args.pca_dim)
+            pca.fit(train_data_for_pca.values)
+            df_data_pca = pca.transform(df_data.values)
+            df_data = pd.DataFrame(df_data_pca)
 
         if self.scale:
             train_data = df_data[border1s[0]:border2s[0]]
