@@ -11,6 +11,7 @@ import random
 from models.models import LSTMModel, PatchTST, iTransformer
 from models.mhc_itransformer import MHC_iTransformer
 from models.time_filter import Model as TimeFilter
+from models.DUET import DUETModel
 from models.data_utils import data_provider
 
 def set_seed(seed):
@@ -43,6 +44,7 @@ class Exp_Main:
             'iTransformer': iTransformer,
             'MHC_iTransformer': MHC_iTransformer,
             'TimeFilter': TimeFilter,
+            'DUET': DUETModel,
         }
         
         if self.args.model not in model_dict:
@@ -96,6 +98,8 @@ class Exp_Main:
         elif self.args.model == 'TimeFilter':
             # TimeFilter expects a config object
             model = TimeFilter(self.args)
+        elif self.args.model == 'DUET':
+            model = DUETModel(self.args)
         
         return model
 
@@ -143,8 +147,8 @@ class Exp_Main:
                 batch_y_mark = batch_y_mark.float().to(self.device)
                 
                 # Model forward
-                if self.args.model == 'TimeFilter':
-                    # TimeFilter might return tuple (output, loss)
+                if self.args.model in ['TimeFilter', 'DUET']:
+                    # TimeFilter/DUET might return tuple (output, loss)
                     outputs, aux_loss = self.model(batch_x, None, is_training=True)
                 else:
                     outputs = self.model(batch_x)
@@ -204,7 +208,7 @@ class Exp_Main:
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                if self.args.model == 'TimeFilter':
+                if self.args.model in ['TimeFilter', 'DUET']:
                     outputs, _ = self.model(batch_x, None, is_training=False)
                 else:
                     outputs = self.model(batch_x)
@@ -236,7 +240,7 @@ class Exp_Main:
                 batch_x_mark = batch_x_mark.float().to(self.device)
                 batch_y_mark = batch_y_mark.float().to(self.device)
 
-                if self.args.model == 'TimeFilter':
+                if self.args.model in ['TimeFilter', 'DUET']:
                     outputs, _ = self.model(batch_x, None, is_training=False)
                 else:
                     outputs = self.model(batch_x)
@@ -253,9 +257,23 @@ class Exp_Main:
         
         mae = np.mean(np.abs(preds - trues))
         mse = np.mean((preds - trues) ** 2)
+        rmse = np.sqrt(mse)
+        # Avoid division by zero
+        range_y = np.max(trues) - np.min(trues)
+        if range_y == 0:
+            nrmse = 0
+        else:
+            nrmse = rmse / range_y
+
+        print(f"Test Results - MAE: {mae:.4f}, MSE: {mse:.4f}, RMSE: {rmse:.4f}, nRMSE: {nrmse:.4f}")
         
-        print(f"Test Results - MAE: {mae:.4f}, MSE: {mse:.4f}")
-        return mae, mse
+        # Save results
+        if not os.path.exists(self.args.result_path):
+            os.makedirs(self.args.result_path)
+        np.save(os.path.join(self.args.result_path, 'preds.npy'), preds)
+        np.save(os.path.join(self.args.result_path, 'trues.npy'), trues)
+
+        return mae, mse, rmse, nrmse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Time Series Forecasting')
@@ -297,6 +315,18 @@ if __name__ == '__main__':
     parser.add_argument('--n_streams', type=int, default=4, help='number of streams for MHC')
     parser.add_argument('--alpha', type=float, default=0.1, help='TimeFilter alpha')
     parser.add_argument('--top_p', type=float, default=0.5, help='TimeFilter top_p')
+    # DUET Config
+    parser.add_argument('--noisy_gating', type=bool, default=True, help='DUET noisy gating')
+    parser.add_argument('--num_experts', type=int, default=4, help='DUET num experts')
+    parser.add_argument('--k', type=int, default=2, help='DUET k')
+    parser.add_argument('--CI', type=int, default=1, help='DUET Channel Independence') 
+    parser.add_argument('--output_attention', action='store_true', help='output attention')
+    parser.add_argument('--fc_dropout', type=float, default=0.05, help='fully connected dropout')
+    parser.add_argument('--moving_avg', type=int, default=25, help='window size of moving average')
+    parser.add_argument('--hidden_size', type=int, default=256, help='hidden size for DUET encoder')
+    parser.add_argument('--factor', type=int, default=1, help='attn factor')
+    parser.add_argument('--result_path', type=str, default='results', help='path to save results')
+    
     parser.add_argument('--task_name', type=str, default='long_term_forecast', help='task name')
     parser.add_argument('--pos', action='store_true', default=True, help='use positional embedding')
 
