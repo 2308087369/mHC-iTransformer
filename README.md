@@ -5,9 +5,13 @@
 ## 项目简介
 
 本项目实现了以下模型用于时间序列预测：
+
 - **PatchTST**: 基于 Patch 的时间序列 Transformer 基准模型。
 - **iTransformer**: 倒置 Transformer (Inverted Transformer) 模型，通过将维度与时间序列对换来捕获多变量相关性。
 - **MHC-iTransformer**: **本项目核心改进模型**，将多视图霍普菲尔德计算（Multi-view Hopfield Computing）与 iTransformer 结合。
+- **DUET**: Dual-Exporer Time Series Forecasting Model，一种新集成的强力预测模型。
+- **TimeFilter**: 基于频域滤波的时间序列预测模型。
+- **LSTM**: 经典的深度学习基线模型。
 
 ## MHC-iTransformer 详细说明
 
@@ -37,7 +41,9 @@ $$H_{l+1} = H_l \cdot W + \phi \cdot \text{Sublayer}(\text{Agg}(H_l))$$
 
 ## 实验结果
 
-项目在特定季度的数据集上进行了对比实验，以下是 MHC-iTransformer 与基准模型的预测效果对比：
+项目在多个标准 Benchmark 数据集上进行了对比实验。详细的实验报告请参阅 [experiment_report_zh.md](experiment_report_zh.md)。
+
+以下是 MHC-iTransformer 与基准模型的预测效果对比示例：
 
 ![模型对比结果](results/q2_final_itransformer_comparison.png)
 
@@ -48,12 +54,15 @@ $$H_{l+1} = H_l \cdot W + \phi \cdot \text{Sublayer}(\text{Agg}(H_l))$$
 ├── datasets/           # 数据集目录 (闭源)
 ├── docs/               # 相关文档
 ├── models/             # 模型定义与数据处理工具
-│   ├── data_utils.py   # 数据加载与预处理
-│   ├── models.py       # PatchTST 与 iTransformer 定义
-│   └── mhc_itransformer.py # MHC-iTransformer 定义 (核心)
+│   ├── data_utils.py   # 数据加载与预处理 (含 PCA 降维逻辑)
+│   ├── models.py       # PatchTST, iTransformer, LSTM 定义
+│   ├── mhc_itransformer.py # MHC-iTransformer 定义 (核心)
+│   ├── DUET.py         # DUET 模型定义
+│   └── time_filter.py  # TimeFilter 模型定义
 ├── results/            # 训练结果与可视化图表
 ├── requirements.txt    # 项目依赖
-└── train_and_eval.py   # 主训练与评估脚本
+├── main.py             # 单次训练入口脚本
+└── run_all.py          # 批量实验脚本 (复现实验推荐)
 ```
 
 ## 安装指南
@@ -67,13 +76,34 @@ pip install -r requirements.txt
 
 ## 运行方法
 
-直接运行主脚本进行训练与评估：
+### 1. 复现完整实验
+
+使用 `run_all.py` 脚本可以自动在所有数据集上运行所有模型，并生成对比报告和图表。
 
 ```bash
-python train_and_eval.py
+python run_all.py
+```
+
+> **注意**: 脚本默认使用 GPU 设备 1。
+
+### 2. 单次训练
+
+可以通过 `main.py` 运行单个模型的训练。
+
+```bash
+python main.py --model MHC_iTransformer --data ETTh2 --root_path ./datasets/ETT-small/ --data_path ETTh2.csv
+```
+
+#### 高维数据处理 (PCA)
+
+对于协变量极多的数据集（如 Traffic 和 Electricity），为了避免 OOM（显存溢出）并加速训练，本项目支持使用 PCA 进行特征降维。
+
+```bash
+# 将特征维度降至 30
+python main.py --model MHC_iTransformer --data Traffic --pca_dim 30 ...
 ```
 
 ## 注意事项
 
-- **数据集**: 本项目使用的数据集属于闭源内容。如需运行，请将 `aligned_15m_full.csv` 放置于 `datasets/` 目录。
-- **计算资源**: 建议在支持 CUDA 的 GPU 环境下运行。
+- **数据集**: 本项目使用的数据集属于闭源内容。如需运行，请将相关 CSV 文件放置于 `datasets/` 目录下的相应子目录中。
+- **计算资源**: 建议在支持 CUDA 的 GPU 环境下运行。对于高维数据集，建议开启 PCA 降维。
