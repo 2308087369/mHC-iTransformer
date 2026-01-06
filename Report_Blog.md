@@ -105,6 +105,8 @@ PatchTST的另一个争议性但有效的设计是**通道独立（CI）**。在
 
 ### 2.4 iTransformer：维度的彻底反转 (ICLR 2024)
 
+![iTransformer Architecture](images/itransformer.png)
+
 如果说PatchTST是时间维度的优化，那么清华大学提出的 **iTransformer** [6] 则是对维度的彻底反转。iTransformer挑战了PatchTST的“通道独立”假设，认为在多变量预测中，变量间的相关性是不可或缺的。
 
 #### 2.4.1 倒置架构（Inverted Architecture）
