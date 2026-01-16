@@ -4,6 +4,10 @@ import torch
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import torch.optim as optim
+try:
+    from torch.optim import Muon
+except ImportError:
+    Muon = None
 import time
 import numpy as np
 import random
@@ -18,6 +22,36 @@ def set_seed(seed):
     random.seed(seed)
     torch.manual_seed(seed)
     np.random.seed(seed)
+
+class MuonAdamW:
+    def __init__(self, model, lr, momentum=0.95, weight_decay=0.01):
+        muon_params = []
+        adamw_params = []
+        for name, p in model.named_parameters():
+            if p.requires_grad:
+                if p.ndim == 2:
+                    muon_params.append(p)
+                else:
+                    adamw_params.append(p)
+        
+        self.optimizers = []
+        if muon_params:
+            if Muon is None:
+                raise ImportError("Muon optimizer is not available in torch.optim")
+            # Muon typically uses higher lr, but we'll stick to provided lr or scale it?
+            # Standard practice: Muon lr is often 0.02, AdamW 0.001.
+            # But here we just use the provided lr. User should tune it.
+            self.optimizers.append(Muon(muon_params, lr=lr, momentum=momentum, weight_decay=weight_decay))
+        if adamw_params:
+            self.optimizers.append(optim.AdamW(adamw_params, lr=lr, weight_decay=weight_decay))
+    
+    def zero_grad(self):
+        for opt in self.optimizers:
+            opt.zero_grad()
+    
+    def step(self):
+        for opt in self.optimizers:
+            opt.step()
 
 class Exp_Main:
     def __init__(self, args):
@@ -104,7 +138,14 @@ class Exp_Main:
         return model
 
     def _select_optimizer(self):
-        model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        if self.args.optimizer == 'Adam':
+            model_optim = optim.Adam(self.model.parameters(), lr=self.args.learning_rate)
+        elif self.args.optimizer == 'AdamW':
+            model_optim = optim.AdamW(self.model.parameters(), lr=self.args.learning_rate, weight_decay=self.args.weight_decay)
+        elif self.args.optimizer == 'Muon' or self.args.optimizer == 'Muon_AdamW':
+            model_optim = MuonAdamW(self.model, lr=self.args.learning_rate, momentum=self.args.momentum, weight_decay=self.args.weight_decay)
+        else:
+            raise ValueError(f"Optimizer {self.args.optimizer} not supported")
         return model_optim
 
     def _select_criterion(self):
@@ -125,6 +166,7 @@ class Exp_Main:
             os.makedirs(path)
 
         time_now = time.time()
+        train_start_time = time.time()
         
         train_steps = len(train_loader)
         early_stopping_counter = 0
@@ -196,6 +238,10 @@ class Exp_Main:
         # Load best model for testing
         best_model_path = os.path.join(path, 'checkpoint.pth')
         self.model.load_state_dict(torch.load(best_model_path))
+        
+        train_end_time = time.time()
+        print(f"Training Time: {train_end_time - train_start_time:.4f}s")
+        
         return self.model
 
     def vali(self, vali_loader, criterion):
@@ -233,6 +279,8 @@ class Exp_Main:
         preds = []
         trues = []
         
+        test_start_time = time.time()
+        
         with torch.no_grad():
             for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(test_loader):
                 batch_x = batch_x.float().to(self.device)
@@ -251,6 +299,9 @@ class Exp_Main:
 
                 preds.append(outputs.detach().cpu().numpy())
                 trues.append(batch_y.detach().cpu().numpy())
+        
+        test_end_time = time.time()
+        print(f"Inference Time: {test_end_time - test_start_time:.4f}s")
 
         preds = np.concatenate(preds, axis=0)
         trues = np.concatenate(trues, axis=0)
@@ -337,6 +388,9 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
+    parser.add_argument('--optimizer', type=str, default='Adam', help='optimizer type: Adam, AdamW, Muon, Muon_AdamW')
+    parser.add_argument('--momentum', type=float, default=0.95, help='momentum for Muon')
+    parser.add_argument('--weight_decay', type=float, default=0.01, help='weight decay')
     
     # GPU
     parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')

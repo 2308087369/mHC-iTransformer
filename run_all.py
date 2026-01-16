@@ -4,10 +4,17 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
+import argparse
+
+# Parse arguments
+parser = argparse.ArgumentParser(description='Run all experiments')
+parser.add_argument('--dataset', type=str, default='Electricity', help='Dataset to run: Electricity, ETTh2, etc. or ALL')
+args = parser.parse_args()
+
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 # Defined datasets to run
-datasets = [
+all_datasets = [
     # (data_name, root_path, data_path, features_count, is_custom, freq, pca_dim)
     ('ETTh2', './datasets/iTransformer_datasets/ETT-small/', 'ETTh2.csv', 7, False, 'h', None),
     ('ETTm1', './datasets/iTransformer_datasets/ETT-small/', 'ETTm1.csv', 7, False, 't', None),
@@ -18,17 +25,27 @@ datasets = [
     ('Exchange', './datasets/iTransformer_datasets/exchange_rate/', 'exchange_rate.csv', 8, True, 'd', None),
 ]
 
+if args.dataset == 'ALL':
+    datasets = all_datasets
+else:
+    datasets = [d for d in all_datasets if d[0].lower() == args.dataset.lower()]
+    if not datasets:
+        print(f"Dataset {args.dataset} not found. Running Electricity by default.")
+        datasets = [d for d in all_datasets if d[0] == 'Electricity']
+
 models = ['TimeFilter', 'iTransformer', 'MHC_iTransformer', 'PatchTST', 'LSTM', 'DUET']
+optimizers = ['Adam', 'AdamW', 'Muon']
 
 results = {}
 
-def run_training(model, data_name, root, path, dim, is_custom, freq, batch_size, pca_dim=None):
+def run_training(model, optimizer, data_name, root, path, dim, is_custom, freq, batch_size, pca_dim=None):
     data_arg = 'custom' if is_custom else data_name
-    result_path = f'./results/{data_name}/{model}'
+    result_path = f'./results/{data_name}/{model}_{optimizer}'
     cmd = [
         'python', 'main.py',
         '--model', model,
         '--data', data_arg,
+        '--optimizer', optimizer,
         '--root_path', root,
         '--data_path', path,
         '--batch_size', str(batch_size),
@@ -63,8 +80,15 @@ def run_training(model, data_name, root, path, dim, is_custom, freq, batch_size,
         mse = "N/A"
         rmse = "N/A"
         nrmse = "N/A"
+        train_time = "N/A"
+        infer_time = "N/A"
+        
         output_lines = proc.stdout.split('\n')
         for line in output_lines:
+            if "Training Time:" in line:
+                train_time = line.split(':')[-1].strip()
+            if "Inference Time:" in line:
+                infer_time = line.split(':')[-1].strip()
             if "Test Results" in line:
                 parts = line.split(',')
                 mae = parts[0].split(':')[-1].strip()
@@ -73,6 +97,7 @@ def run_training(model, data_name, root, path, dim, is_custom, freq, batch_size,
                 nrmse = parts[3].split(':')[-1].strip()
                 return {
                     'mae': mae, 'mse': mse, 'rmse': rmse, 'nrmse': nrmse, 
+                    'train_time': train_time, 'infer_time': infer_time,
                     'time': f"{end_time - start_time:.2f}s", 'batch_size': batch_size,
                     'result_path': result_path
                 }, None
@@ -161,45 +186,59 @@ def plot_metrics_comparison(results, models):
         plt.savefig(f'figures/comparison_{metric}.png')
         plt.close()
 
-print(f"{'Dataset':<15} | {'Model':<20} | {'MAE':<10} | {'MSE':<10} | {'RMSE':<10} | {'nRMSE':<10} | {'Time':<10} | {'Batch':<5}")
-print("-" * 110)
+print(f"{'Dataset':<15} | {'Model':<20} | {'Opt':<8} | {'MAE':<10} | {'MSE':<10} | {'RMSE':<10} | {'nRMSE':<10} | {'TrainT':<8} | {'InferT':<8} | {'Time':<10} | {'Batch':<5}")
+print("-" * 140)
 
 for data_name, root, path, dim, is_custom, freq, pca_dim in datasets:
     results[data_name] = {}
     for model in models:
-        current_batch_size = 64
-        while current_batch_size >= 1:
-            print(f"Running {model} on {data_name} (BS={current_batch_size})...", end=' ', flush=True)
-            res, error_log = run_training(model, data_name, root, path, dim, is_custom, freq, current_batch_size, pca_dim)
-            
-            if res == "OOM":
-                print("OOM. Retrying with smaller batch size.")
-                current_batch_size //= 2
-                continue
-            elif isinstance(res, dict):
-                print(f"-> MAE: {res['mae']}, MSE: {res['mse']}, RMSE: {res['rmse']}, nRMSE: {res['nrmse']}")
-                print(f"{data_name:<15} | {model:<20} | {res['mae']:<10} | {res['mse']:<10} | {res['rmse']:<10} | {res['nrmse']:<10} | {res['time']:<10} | {res['batch_size']:<5}")
-                results[data_name][model] = res
-                break
-            else:
-                print(f"-> Failed: {res}")
-                if res == "Error":
-                     print(error_log)
-                results[data_name][model] = res
-                break
+        for optimizer in optimizers:
+            model_key = f"{model}_{optimizer}"
+            current_batch_size = 64
+            while current_batch_size >= 1:
+                print(f"Running {model} with {optimizer} on {data_name} (BS={current_batch_size})...", end=' ', flush=True)
+                res, error_log = run_training(model, optimizer, data_name, root, path, dim, is_custom, freq, current_batch_size, pca_dim)
+                
+                if res == "OOM":
+                    print("OOM. Retrying with smaller batch size.")
+                    current_batch_size //= 2
+                    continue
+                elif isinstance(res, dict):
+                    print(f"-> MAE: {res['mae']}, MSE: {res['mse']}, RMSE: {res['rmse']}, nRMSE: {res['nrmse']}")
+                    print(f"{data_name:<15} | {model:<20} | {optimizer:<8} | {res['mae']:<10} | {res['mse']:<10} | {res['rmse']:<10} | {res['nrmse']:<10} | {res['train_time']:<8} | {res['infer_time']:<8} | {res['time']:<10} | {res['batch_size']:<5}")
+                    results[data_name][model_key] = res
+                    break
+                else:
+                    print(f"-> Failed: {res}")
+                    if res == "Error":
+                         print(error_log)
+                    results[data_name][model_key] = res
+                    break
     
     # Plot predictions for this dataset
-    plot_predictions(data_name, models, results)
+    # plot_predictions(data_name, models, results) # Disable for now or update to handle model_key
 
 # Plot overall metrics comparison
-plot_metrics_comparison(results, models)
+# plot_metrics_comparison(results, models) # Disable for now or update to handle model_key
 
 print("\n\nFinal Summary:")
-print(f"{'Dataset':<15} | {'Model':<20} | {'MAE':<10} | {'MSE':<10} | {'RMSE':<10} | {'nRMSE':<10} | {'Batch':<5}")
+print(f"{'Dataset':<15} | {'Model':<20} | {'Opt':<8} | {'MAE':<10} | {'MSE':<10} | {'RMSE':<10} | {'nRMSE':<10} | {'Batch':<5}")
 print("-" * 100)
-for data_name, res in results.items():
-    for model, metrics in res.items():
-        if isinstance(metrics, dict):
-            print(f"{data_name:<15} | {model:<20} | {metrics['mae']:<10} | {metrics['mse']:<10} | {metrics['rmse']:<10} | {metrics['nrmse']:<10} | {metrics['batch_size']:<5}")
+for data_name, res_dict in results.items():
+    for key, res in res_dict.items():
+        if isinstance(res, dict):
+             # key is model_optimizer
+             parts = key.rsplit('_', 1)
+             if len(parts) == 2:
+                 m, opt = parts
+             else:
+                 m, opt = key, 'Unknown'
+                 
+             print(f"{data_name:<15} | {m:<20} | {opt:<8} | {res['mae']:<10} | {res['mse']:<10} | {res['rmse']:<10} | {res['nrmse']:<10} | {res['batch_size']:<5}")
         else:
-            print(f"{data_name:<15} | {model:<20} | {str(metrics):<10} | {'N/A':<10} | {'N/A':<10} | {'N/A':<10} | {'N/A':<5}")
+             parts = key.rsplit('_', 1)
+             if len(parts) == 2:
+                 m, opt = parts
+             else:
+                 m, opt = key, 'Unknown'
+             print(f"{data_name:<15} | {m:<20} | {opt:<8} | {str(res):<10} | {'N/A':<10} | {'N/A':<10} | {'N/A':<10} | {'N/A':<5}")

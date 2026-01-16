@@ -8,14 +8,14 @@
 
 - **PatchTST**: 基于 Patch 的时间序列 Transformer 基准模型。
 - **iTransformer**: 倒置 Transformer (Inverted Transformer) 模型，通过将维度与时间序列对换来捕获多变量相关性。
-- **MHC-iTransformer**: **本项目核心改进模型**，将多视图霍普菲尔德计算（Multi-view Hopfield Computing）与 iTransformer 结合。
+- **MHC-iTransformer**: **本项目核心改进模型**，将mHC与 iTransformer 结合。
 - **DUET**: Dual-Exporer Time Series Forecasting Model，一种新集成的强力预测模型。
 - **TimeFilter**: 基于频域滤波的时间序列预测模型。
 - **LSTM**: 经典的深度学习基线模型。
 
 ## MHC-iTransformer 详细说明
 
-MHC-iTransformer 在原始 iTransformer 的基础上引入了 **多视图霍普菲尔德计算 (MHC)** 机制，旨在增强模型对复杂时间序列模式的捕捉能力。
+MHC-iTransformer 在原始 iTransformer 的基础上引入了 ** (MHC)** 机制，旨在增强模型对复杂时间序列模式的捕捉能力。
 
 ### 1. 核心原理
 - **多视图流 (Multi-stream)**: 不同于传统 Transformer 维护单一的状态，MHC 维护 $N$ 个并行的信息流（Streams/Views）。每个流可以捕捉时间序列的不同特征。
@@ -85,21 +85,43 @@ pip install -r requirements.txt
 
 ### 1. 复现完整实验
 
-使用 `run_all.py` 脚本可以自动在所有数据集上运行所有模型，并生成对比报告和图表。
+使用 `run_all.py` 脚本可以自动在指定数据集（默认 Electricity）或所有数据集上运行所有模型，并生成对比报告和图表。脚本会自动对比 **Adam**、**AdamW** 和 **Muon** 三种优化器的效果，并记录训练/推理时间。
 
 ```bash
+# 默认运行 Electricity 数据集
 python run_all.py
+
+# 指定运行 ETTh1 数据集
+python run_all.py --dataset ETTh1
+
+# 运行所有数据集
+python run_all.py --dataset ALL
 ```
 
 > **注意**: 脚本默认使用 GPU 设备 1。
 
 ### 2. 单次训练
 
-可以通过 `main.py` 运行单个模型的训练。
+可以通过 `main.py` 运行单个模型的训练，并支持指定优化器。
 
 ```bash
+# 默认使用 Adam
 python main.py --model MHC_iTransformer --data ETTh2 --root_path ./datasets/ETT-small/ --data_path ETTh2.csv
+
+# 指定使用 AdamW
+python main.py --model MHC_iTransformer ... --optimizer AdamW
+
+# 指定使用 Muon (混合优化器)
+python main.py --model MHC_iTransformer ... --optimizer Muon
 ```
+
+## 优化器支持与说明
+
+本项目新增了对 **AdamW** 和 **Muon** (及其混合模式) 优化器的支持与对比，并在结果中增加了 **训练时间 (Training Time)** 和 **推理时间 (Inference Time)** 指标。
+
+> **特别提醒**: 
+> 这里的优化器对比旨在提供更广泛的实验视角。在大多数时间序列预测场景下，**Adam** 和 **AdamW** 已经是表现相对最好的一档优化器。
+> **Muon** 优化器（或混合 Muon+AdamW）主要设计用于 **大模型 (LLM)** 训练场景（面对超大规模的矩阵路径），在当前的时间序列任务中并不能保证提供提升，甚至可能不如经典优化器。
 
 #### 高维数据处理 (PCA)
 

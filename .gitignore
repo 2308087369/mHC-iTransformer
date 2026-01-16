@@ -39,3 +39,15 @@ datasets/iTransformer_datasets/electricity/electricity.csv
 
 # OS
 .DS_Store
+
+# Model Checkpoints and Weights
+checkpoints/
+*.pth
+*.pt
+*.ckpt
+*.pkl
+
+# Training Results (large binary files)
+results/
+*.npy
+
