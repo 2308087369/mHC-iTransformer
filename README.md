@@ -14,7 +14,7 @@
 | 博客主题 | 内容简介 | 阅读链接 |
 | :--- | :--- | :---: |
 | **时序大模型综述** | 涵盖 2023-2026 年主流时序大模型（Foundation Models），全面分析其创新点与性能。 | [![阅读](https://img.shields.io/badge/阅读-时序大模型综述-FF6F00?style=for-the-badge&logo=markdown)](Blogs/时序综述-大模型.md) |
-| **传统/创新模型实战** | 深入解析 DLinear, PatchTST, iTransformer 及本项目提出的 MHC-iTransformer 原理与实现。 | [![阅读](https://img.shields.io/badge/阅读-常用时序模型-00C853?style=for-the-badge&logo=markdown)](Blogs/时序-个人推荐.md) |
+| **传统/创新模型实战** | 深入解析 DLinear, PatchTST, iTransformer 及本项目提出的 MHC-iTransformer 原理与实现。 | [![阅读](https://img.shields.io/badge/阅读-常用时序模型-00C853?style=for-the-badge&logo=markdown)](Blogs/时序综述-偏传统.md) |
 
 ---
 
