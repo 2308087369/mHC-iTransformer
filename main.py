@@ -14,6 +14,7 @@ import random
 
 from models.models import LSTMModel, PatchTST, iTransformer
 from models.mhc_itransformer import MHC_iTransformer
+from models.attn_res_itransformer import AttnRes_iTransformer
 from models.time_filter import Model as TimeFilter
 from models.DUET import DUETModel
 from models.data_utils import data_provider
@@ -77,6 +78,7 @@ class Exp_Main:
             'PatchTST': PatchTST,
             'iTransformer': iTransformer,
             'MHC_iTransformer': MHC_iTransformer,
+            'AttnRes_iTransformer': AttnRes_iTransformer,
             'TimeFilter': TimeFilter,
             'DUET': DUETModel,
         }
@@ -127,6 +129,16 @@ class Exp_Main:
                 n_heads=self.args.n_heads,
                 n_layers=self.args.e_layers,
                 n_streams=self.args.n_streams,
+                dropout=self.args.dropout
+            )
+        elif self.args.model == 'AttnRes_iTransformer':
+            model = AttnRes_iTransformer(
+                input_dim=self.args.enc_in,
+                seq_len=self.args.seq_len,
+                pred_len=self.args.pred_len,
+                d_model=self.args.d_model,
+                n_heads=self.args.n_heads,
+                n_layers=self.args.e_layers,
                 dropout=self.args.dropout
             )
         elif self.args.model == 'TimeFilter':

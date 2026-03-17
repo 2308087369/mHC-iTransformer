@@ -1,6 +1,7 @@
 import subprocess
 import time
 import os
+import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -33,7 +34,7 @@ else:
         print(f"Dataset {args.dataset} not found. Running Electricity by default.")
         datasets = [d for d in all_datasets if d[0] == 'Electricity']
 
-models = ['TimeFilter', 'iTransformer', 'MHC_iTransformer', 'PatchTST', 'LSTM', 'DUET']
+models = ['TimeFilter', 'iTransformer', 'MHC_iTransformer', 'AttnRes_iTransformer', 'PatchTST', 'LSTM', 'DUET']
 optimizers = ['Adam', 'AdamW', 'Muon']
 
 results = {}
@@ -42,7 +43,7 @@ def run_training(model, optimizer, data_name, root, path, dim, is_custom, freq, 
     data_arg = 'custom' if is_custom else data_name
     result_path = f'./results/{data_name}/{model}_{optimizer}'
     cmd = [
-        'python', 'main.py',
+        sys.executable, 'main.py',
         '--model', model,
         '--data', data_arg,
         '--optimizer', optimizer,

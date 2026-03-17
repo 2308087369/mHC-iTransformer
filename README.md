@@ -27,6 +27,7 @@
 | **PatchTST** | Transformer | 基于 Patch 的时序 Transformer，利用 Channel Independence 提升泛化能力。 |
 | **iTransformer** | Transformer | 倒置架构（Inverted Architecture），将变量视为 Token 捕捉多变量相关性。 |
 | **MHC-iTransformer** | **Ours** | **本项目核心改进**，在 iTransformer 基础上引入 MHC 多视图流与 Sinkhorn 投影。 |
+| **AttnRes-iTransformer** | Transformer | **Kimi 新技术**，引入 Attention Residuals 机制，尝试解决深层网络退化问题。 |
 | **DUET** | Ensemble | Dual-Exporer 模型，强力集成预测方案。 |
 | **TimeFilter** | Frequency | 基于频域滤波的创新预测模型。 |
 | **DLinear** | Linear | 简单的线性分解模型，强有力的 Baseline。 |
@@ -47,6 +48,12 @@ MHC-iTransformer 是本项目的核心创新点。它参考了 DeepSeek 的 MHC 
 状态更新遵循残差逻辑：
 $$H_{l+1} = H_l \cdot W + \phi \cdot \text{Sublayer}(\text{Agg}(H_l))$$
 其中 $W$ 为 Sinkhorn 投影后的流转移矩阵。
+
+## AttnRes-iTransformer 简述
+
+引入了 Kimi 发布的 **Attention Residuals** 技术。核心思想是用可学习的注意力机制替代传统的固定残差连接：
+$$ \mathbf{h}_l = \sum_{i=0}^{l-1} \alpha_{i \to l} \cdot \mathbf{v}_i $$
+虽然该技术在 LLM 大模型中表现优异，但在本项目较浅的时序预测模型中，暂未发现显著优于标准残差的效果。
 
 ---
 
