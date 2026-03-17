@@ -14,9 +14,10 @@
 1.  **TimeFilter**: 利用频域滤波的 SOTA 模型。
 2.  **iTransformer**: 倒置 Transformer 架构。
 3.  **MHC_iTransformer**: 改进的 iTransformer，带有与其多头通道注意力机制（本方案）。
-4.  **PatchTST**: 基于 Patch 的 Transformer 模型。
-5.  **LSTM**: 长短期记忆网络（基线）。
-6.  **DUET**: Dual-Exporer 时间序列预测模型（新集成）。
+4.  **AttnRes_iTransformer**: 引入 Kimi Attention Residuals 技术的 iTransformer 变体。
+5.  **PatchTST**: 基于 Patch 的 Transformer 模型。
+6.  **LSTM**: 长短期记忆网络（基线）。
+7.  **DUET**: Dual-Exporer 时间序列预测模型（新集成）。
 
 ## 2. 方法论
 
@@ -81,6 +82,7 @@
 | | PatchTST | 0.5517 | 0.5735 | 0.7573 | 0.0626 |
 | | LSTM | 0.6495 | 0.7559 | 0.8695 | 0.0719 |
 | | DUET | 0.5498 | 0.5677 | 0.7534 | 0.0623 |
+| | AttnRes_iTransformer | 0.5438 | 0.5587 | 0.7475 | 0.0618 |
 | **Exchange** | TimeFilter | 0.2074 | 0.0897 | 0.2995 | 0.0443 |
 | | iTransformer | 0.2086 | 0.0878 | 0.2963 | 0.0439 |
 | | MHC_iTransformer | 0.2105 | 0.0894 | 0.2991 | 0.0443 |
@@ -111,6 +113,11 @@
 2.  **指标对比** (`comparison_mae.png`, `comparison_mse.png`):
     - 柱状图清晰地展示了 **PatchTST** 在 ETT 数据集上的领先地位，以及 **MHC_iTransformer** 在 Electricity/Traffic 上的优势。
     - **DUET** 保持了均衡的性能表现，从未垫底，并且经常挑战最佳模型。
+
+### 5.1. AttnRes 深度分析
+我们在 Electricity 数据集上进行了进一步的深度实验（层数分别为 2, 4, 6, 8），以评估 **AttnRes** 技术的有效性。
+- **结果**: `AttnRes_iTransformer` 的表现略逊于基线 `iTransformer`（MSE 误差高出约 0.3% ~ 2.7%）。
+- **结论**: AttnRes 技术最初是为超深网络（如 LLM）设计的，旨在缓解信号稀释问题。而在通常只有 2-4 层的时序预测任务中，其引入的额外复杂性并未带来收益，反而可能引入噪声。对于此类规模的模型，标准残差连接已经足够。
 
 ## 6. 结论
 实验证实：
