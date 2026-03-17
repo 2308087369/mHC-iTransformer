@@ -7,9 +7,10 @@ This report summarizes the performance of six time series forecasting models acr
 1.  **TimeFilter**: SOTA model utilizing frequency domain filtering.
 2.  **iTransformer**: Inverted Transformer architecture.
 3.  **MHC_iTransformer**: Modified iTransformer with Multi-Head Channel attention (Ours/Proposed).
-4.  **PatchTST**: Patch-based Transformer model.
-5.  **LSTM**: Long Short-Term Memory (Baseline).
-6.  **DUET**: Dual-Exporer Time Series forecasting model (Integrated).
+4.  **AttnRes_iTransformer**: iTransformer variant using Attention Residuals (Kimi Tech).
+5.  **PatchTST**: Patch-based Transformer model.
+6.  **LSTM**: Long Short-Term Memory (Baseline).
+7.  **DUET**: Dual-Exporer Time Series forecasting model (Integrated).
 
 ## 2. Methodology
 
@@ -74,6 +75,7 @@ The following table presents the test set performance for all models.
 | | PatchTST | 0.5517 | 0.5735 | 0.7573 | 0.0626 |
 | | LSTM | 0.6495 | 0.7559 | 0.8695 | 0.0719 |
 | | DUET | 0.5498 | 0.5677 | 0.7534 | 0.0623 |
+| | AttnRes_iTransformer | 0.5438 | 0.5587 | 0.7475 | 0.0618 |
 | **Exchange** | TimeFilter | 0.2074 | 0.0897 | 0.2995 | 0.0443 |
 | | iTransformer | 0.2086 | 0.0878 | 0.2963 | 0.0439 |
 | | MHC_iTransformer | 0.2105 | 0.0894 | 0.2991 | 0.0443 |
@@ -104,6 +106,11 @@ The generated figures in the `figures/` directory provide visual confirmation of
 2.  **Metric Comparisons** (`comparison_mae.png`, `comparison_mse.png`):
     - The bar charts clearly illustrate the leadership of **PatchTST** on ETT datasets and **MHC_iTransformer** on Electricity/Traffic.
     - **DUET** maintains a balanced performance profile, never being the worst and often challenging the best.
+
+### 5.1. AttnRes Analysis
+We further conducted a depth experiment (Layers 2, 4, 6, 8) on the Electricity dataset to evaluate **AttnRes**.
+- **Result**: AttnRes_iTransformer consistently performed slightly worse than the baseline iTransformer (+0.3% ~ +2.7% MSE).
+- **Conclusion**: AttnRes is designed for very deep networks (LLMs) to mitigate signal dilution. In time series tasks where models are typically shallow (2-4 layers), the additional complexity of AttnRes does not provide a benefit and may introduce noise. Standard residuals are sufficient for this scale.
 
 ## 6. Conclusion
 The experiments confirm that:
