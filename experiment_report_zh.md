@@ -1,48 +1,56 @@
 # 时间序列预测实验报告
 
-## 1. 实验概述
+## 1. 摘要
 
-为了全面评估当前主流的时间序列预测 **SOTA (State-of-the-Art)** 模型（特指基于 PyTorch 构建的深度神经网络，排除传统统计学模型及 Chronos 等大规模预训练模型），我们选取了 6 个具有代表性的模型进行对比实验。实验数据均源自 **iTransformer** 开源项目整理的标准 Benchmark 数据集，涵盖电力、交通、天气及经济等多个领域。为确保公平性，我们统一了数据预处理流程、评估指标及数据集划分，并在 **Ubuntu** 环境下使用 **NVIDIA RTX 4090D** 显卡完成了所有测试。
+本报告对 7 个时间序列预测模型在 7 个标准 Benchmark 数据集上的表现进行了系统对比，重点评估我们提出的 **MHC_iTransformer** 以及新集成的 **DUET** 模型，并将其与 **PatchTST**、**iTransformer**、**TimeFilter** 和 **LSTM** 等强基线进行比较。
 
-所有的测试代码已经开源到 GitHub 项目 [mHC-iTransformer](https://github.com/2308087369/mHC-iTransformer) 中，可以直接运行 `run_all.py` 脚本进行复现实验。
+所有实验均在统一的数据预处理、数据集划分和评价指标设置下完成，以尽量保证对比公平。对于高维数据集 **Traffic** 和 **Electricity**，我们采用 **PCA** 将输入维度压缩至 30，以避免单卡训练时出现 CUDA 显存溢出，并提升整体实验效率。
 
-> **注意**：这里的 **MHC_iTransformer** 是基于 Deepseek 提出的新类残差结构改进得到的模型，由我们自主优化。本次实验的目的并非凸显该模型的能力——实际上在上述 Benchmark 数据集的测试中该模型并未取得较好的成绩，反倒是在我们闭源的一个大负荷真实数据集中（周前 672 个点的长时间预测）相比 PatchTST 取得了明显优势。在这个实验中我们尽量不对模型的超参数进行特别优化，也不对数据进行二次加工，以求达到一个公平的对比实验环境。
+从整体结果来看：
+- **PatchTST** 仍然是最稳健的通用基线模型。
+- **TimeFilter** 在具有较强频域规律的数据集上表现突出。
+- **MHC_iTransformer** 在经过 PCA 处理的高维任务上更具竞争力。
+- **DUET** 整体表现稳定，在 **Traffic** 数据集上尤其亮眼。
 
-这些实验用的数据集基本采自真实世界，通常具备不明显的周期性和时间特征，且任务几乎都是 96 点预测，非常考验模型的时间模式的学习能力和对噪声的抑制能力。
+## 2. 实验设置
 
-### 评估模型
-1.  **TimeFilter**: 利用频域滤波的 SOTA 模型。
-2.  **iTransformer**: 倒置 Transformer 架构。
-3.  **MHC_iTransformer**: 改进的 iTransformer，带有与其多头通道注意力机制（本方案）。
-4.  **AttnRes_iTransformer**: 引入 Kimi Attention Residuals 技术的 iTransformer 变体。
-5.  **PatchTST**: 基于 Patch 的 Transformer 模型。
-6.  **LSTM**: 长短期记忆网络（基线）。
-7.  **DUET**: Dual-Exporer 时间序列预测模型（新集成）。
+### 2.1 参评模型
 
-## 2. 方法论
+主实验共比较以下 6 个模型：
+1. **TimeFilter**：基于频域滤波的时间序列预测模型。
+2. **iTransformer**：面向多变量预测任务的倒置 Transformer 架构。
+3. **MHC_iTransformer**：我们提出的改进版 iTransformer，引入多头通道注意力机制。
+4. **PatchTST**：基于 Patch 建模的强基线 Transformer 模型。
+5. **LSTM**：经典循环神经网络基线。
+6. **DUET**：新集成的 Dual-Explorer 时间序列预测模型。
 
-### 数据集
-实验使用了以下数据集。注意：对于高维数据集（**Traffic** 和 **Electricity**），我们采用了 **PCA（主成分分析）** 将特征维度降低到 30，以避免 CUDA 显存溢出（OOM）错误并加速训练。
+此外，我们还在 **Electricity** 数据集上补充评估了 **AttnRes_iTransformer**。该模型引入了 Attention Residuals 机制，目的是验证这一技术在相对浅层的时序预测网络中是否有效。由于它属于补充分析，因此未纳入所有数据集的主表对比。
 
-| 数据集 | 类型 | 原始维度 | 训练维度 | 频率 |
+### 2.2 数据集
+
+实验使用了 7 个标准公开数据集：
+
+| 数据集 | 领域 | 原始维度 | 训练维度 | 频率 |
 | :--- | :--- | :--- | :--- | :--- |
-| **ETTh2** | Transformer 温度 | 7 | 7 | 每小时 |
-| **ETTm1** | Transformer 温度 | 7 | 7 | 15分钟 |
-| **ETTm2** | Transformer 温度 | 7 | 7 | 15分钟 |
-| **Weather** | 气象 | 21 | 21 | 10分钟 |
+| **ETTh2** | 电力变压器温度 | 7 | 7 | 每小时 |
+| **ETTm1** | 电力变压器温度 | 7 | 7 | 15 分钟 |
+| **ETTm2** | 电力变压器温度 | 7 | 7 | 15 分钟 |
+| **Weather** | 气象 | 21 | 21 | 10 分钟 |
 | **Traffic** | 交通流量 | 862 | **30 (PCA)** | 每小时 |
 | **Electricity** | 电力负荷 | 321 | **30 (PCA)** | 每小时 |
 | **Exchange** | 汇率 | 8 | 8 | 每日 |
 
-### 评价指标
-- **MAE**: 平均绝对误差 (越低越好)
-- **MSE**: 均方误差 (越低越好)
-- **RMSE**: 均方根误差 (越低越好)
-- **nRMSE**: 归一化均方根误差 (越低越好)
+### 2.3 评价指标
+
+本报告统一采用以下 4 个误差指标，且数值越低表示模型表现越好：
+- **MAE**：平均绝对误差
+- **MSE**：均方误差
+- **RMSE**：均方根误差
+- **nRMSE**：归一化均方根误差
 
 ## 3. 定量结果
 
-下表展示了所有模型在测试集上的表现。
+表 1 汇总了各模型在测试集上的表现。表格中加粗的数值表示对应数据集和指标下的最优结果。
 
 | 数据集 | 模型 | MAE | MSE | RMSE | nRMSE |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -90,41 +98,65 @@
 | | LSTM | 0.2313 | 0.1087 | 0.3297 | 0.0488 |
 | | DUET | 0.2067 | 0.0873 | 0.2954 | 0.0437 |
 
-## 4. 性能分析
+## 4. 结果分析
 
-### 4.1. 总体对比
-- **PatchTST**: 表现强劲，在 **ETTh2**、**ETTm1** 和 **Exchange** 上取得了最佳结果。它仍然是一个稳健的 SOTA 基线。
-- **TimeFilter**: 在 **ETTm2** 和 **Weather** 上表现出色，证实了其在捕捉频域模式方面的有效性。
-- **MHC_iTransformer**: 在（经过 PCA 处理后的）高维数据集 **Traffic** 和 **Electricity** 上表现异常优异，实现了最低的 MSE/RMSE。这表明即使在降维后的特征空间中，多头通道注意力机制仍然有效。
-- **DUET**: 新集成的 DUET 模型极具竞争力。它在 **Traffic** 上取得了最佳 MAE (0.5277)，并且在所有数据集上都始终接近最佳表现。这验证了集成的成功以及该模型的能力。
-- **LSTM**: 正如预期，LSTM 通常落后于基于 Transformer 的模型，但仍可作为有效的基线。
+### 4.1 总体趋势
 
-### 4.2. PCA 对 Traffic 和 Electricity 的影响
-应用 PCA（降维至 30 维）使我们能够成功地在 **Traffic** 和 **Electricity** 上进行训练，而不会出现 OOM 错误。有趣的是，**MHC_iTransformer** 和 **DUET** 非常适应这些经过 PCA 降维的特征，在这些数据集上优于 PatchTST 和 TimeFilter。
+从整体结果可以看出以下几个明显规律：
 
-## 5. 可视化
+- **PatchTST** 是最稳健的通用强基线，在 **ETTh2**、**ETTm1** 和 **Exchange** 上取得了最佳结果。
+- **TimeFilter** 在 **ETTm2** 和 **Weather** 上优势明显，说明其频域建模偏置与这两类数据更匹配。
+- **MHC_iTransformer** 在 **Traffic** 和 **Electricity** 上表现最具竞争力，在经过 PCA 处理后仍取得了最佳的 MSE、RMSE 和 nRMSE。
+- **DUET** 在各数据集上整体表现稳定，并在 **Traffic** 上取得了最佳 MAE，体现出较强的实用预测能力。
+- **LSTM** 仍可作为传统深度学习基线，但整体上与 Transformer 系列模型存在明显差距。
 
-`figures/` 目录下的可视化图像直观地证实了这些结果：
+### 4.2 各数据集最优模型
 
-1.  **预测对比** (`{dataset}_prediction.png`):
-    - 预测曲线的目视检查显示，**PatchTST** 和 **DUET** 能够很好地捕捉趋势和季节性。
-    - 在 **Traffic** 数据集上，**DUET** 模型的预测与真实值（Ground Truth）非常吻合，支持了其低 MAE 得分。
+若以 MSE 作为主要参考指标，各数据集的最优模型如下：
 
-2.  **指标对比** (`comparison_mae.png`, `comparison_mse.png`):
-    - 柱状图清晰地展示了 **PatchTST** 在 ETT 数据集上的领先地位，以及 **MHC_iTransformer** 在 Electricity/Traffic 上的优势。
-    - **DUET** 保持了均衡的性能表现，从未垫底，并且经常挑战最佳模型。
+| 数据集 | 最优模型 | 简要说明 |
+| :--- | :--- | :--- |
+| **ETTh2** | PatchTST | 在标准 ETT 数据集上表现稳定、泛化较强 |
+| **ETTm1** | PatchTST | 相较其他 Transformer 变体保持小幅领先 |
+| **ETTm2** | TimeFilter | 频域建模优势最明显 |
+| **Weather** | TimeFilter | 对局部周期性和平滑变化的拟合更好 |
+| **Traffic** | MHC_iTransformer | PCA 后误差表现最佳，DUET 则取得最优 MAE |
+| **Electricity** | MHC_iTransformer | 在压缩后的高维负荷数据上效果最优 |
+| **Exchange** | PatchTST | 在汇率数据上具备更好的整体泛化能力 |
 
-### 5.1. AttnRes 深度分析
-我们在 Electricity 数据集上进行了进一步的深度实验（层数分别为 2, 4, 6, 8），以评估 **AttnRes** 技术的有效性。
-- **结果**: `AttnRes_iTransformer` 的表现略逊于基线 `iTransformer`（MSE 误差高出约 0.3% ~ 2.7%）。
-- **结论**: AttnRes 技术最初是为超深网络（如 LLM）设计的，旨在缓解信号稀释问题。而在通常只有 2-4 层的时序预测任务中，其引入的额外复杂性并未带来收益，反而可能引入噪声。对于此类规模的模型，标准残差连接已经足够。
+### 4.3 PCA 对高维任务的影响
+
+对于 **Traffic** 和 **Electricity** 这类高维协变量数据集，PCA 降维到 30 维首先解决了单卡训练的显存压力问题，使实验能够稳定完成。更重要的是，降维并未显著削弱强模型的竞争力。相反，**MHC_iTransformer** 和 **DUET** 在压缩后的特征空间中依然表现突出，说明适度的特征压缩仍然保留了对预测任务至关重要的结构信息。
+
+这表明，在计算资源受限的场景下，合理的降维策略不仅是工程上的折中，也可以成为稳定复现实验结果的有效手段。
+
+### 4.4 Attention Residuals 补充分析
+
+我们进一步在 **Electricity** 数据集上进行了深度实验，以评估 **AttnRes_iTransformer** 的有效性。
+
+- **实验现象**：与基线 `iTransformer` 相比，`AttnRes_iTransformer` 的 MSE 略有退化，幅度大约为 **0.3% 到 2.7%**。
+- **可能原因**：Attention Residuals 最初主要面向超深网络设计，用于缓解信号稀释问题；而本项目中的时序预测模型层数通常较浅，额外的残差注意力结构未能带来明显收益，反而可能引入额外噪声与训练复杂度。
+
+因此，基于当前实验结果，我们暂不建议在浅层时序预测架构中用 Attention Residuals 替代标准残差连接。
+
+## 5. 可视化结果
+
+`figures/` 目录中的图像与定量结果基本一致，主要反映出以下现象：
+
+1. **预测曲线图**（`{dataset}_prediction.png`）
+   从可视化效果上看，**PatchTST**、**MHC_iTransformer** 和 **DUET** 对主要趋势的跟踪较为稳定；其中 **Traffic** 数据集上的 DUET 与真实值最为接近，这与其较优的 MAE 结果相吻合。
+
+2. **指标对比图**（`comparison_mae.png`、`comparison_mse.png`、`comparison_nrmse.png`）
+   柱状图直观展示了 **PatchTST** 在 ETT 类数据集上的优势，以及 **MHC_iTransformer** 在 **Traffic** 和 **Electricity** 上的领先表现。
 
 ## 6. 结论
-实验证实：
-1.  **DUET 集成**: DUET 模型已成功集成且表现具有竞争力，特别是在复杂的 Traffic 数据集上。
-2.  **PCA 策略**: 通过 PCA 将维度降低至 30 是处理像 Traffic 和 Electricity 这样的大型协变量数据集的可行策略，既能保证高效训练，又能维持预测精度。
-3.  **模型选择**:
-    - 对于通用的 ETT/Exchange 任务，推荐使用 **PatchTST**。
-    - 对于 Weather/ETTm2 任务，推荐使用 **TimeFilter**。
-    - 对于 Traffic/Electricity 任务，推荐使用 **MHC_iTransformer** 或 **DUET**。
 
+综合本次实验，可以得到以下结论：
+
+1. **PatchTST** 仍然是标准 Benchmark 上最可靠的默认选择。
+2. **TimeFilter** 更适合具有明显频域结构的数据集，如 **ETTm2** 和 **Weather**。
+3. **MHC_iTransformer** 在经过 PCA 处理的高维任务上展现出较强潜力，尤其是在 **Traffic** 和 **Electricity** 上。
+4. **DUET** 已成功完成集成，并表现出稳定且有竞争力的结果，在 **Traffic** 上尤其值得关注。
+5. **AttnRes_iTransformer** 在当前浅层时序预测设定下未体现出明确优势。
+
+总体而言，不存在一个在所有数据集上绝对占优的单一模型。实际选型仍应结合数据特征、计算资源约束以及任务关注的主要评价指标综合判断。

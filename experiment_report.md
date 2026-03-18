@@ -1,41 +1,56 @@
 # Time Series Forecasting Experiment Report
 
-## 1. Experiment Overview
-This report summarizes the performance of six time series forecasting models across seven standard benchmark datasets. The objective is to evaluate the effectiveness of the proposed **MHC_iTransformer** and the integrated **DUET** model against state-of-the-art (SOTA) baselines like **PatchTST**, **iTransformer**, **TimeFilter**, and the classic **LSTM**.
+## 1. Executive Summary
 
-### Models Evaluated
-1.  **TimeFilter**: SOTA model utilizing frequency domain filtering.
-2.  **iTransformer**: Inverted Transformer architecture.
-3.  **MHC_iTransformer**: Modified iTransformer with Multi-Head Channel attention (Ours/Proposed).
-4.  **AttnRes_iTransformer**: iTransformer variant using Attention Residuals (Kimi Tech).
-5.  **PatchTST**: Patch-based Transformer model.
-6.  **LSTM**: Long Short-Term Memory (Baseline).
-7.  **DUET**: Dual-Exporer Time Series forecasting model (Integrated).
+This report presents a comparative study of seven time series forecasting models on seven widely used benchmark datasets. Our primary goal is to assess the behavior of the proposed **MHC_iTransformer** and the newly integrated **DUET** model against strong baselines, including **PatchTST**, **iTransformer**, **TimeFilter**, and **LSTM**.
 
-## 2. Methodology
+All experiments were conducted under a unified evaluation pipeline with consistent preprocessing, dataset splits, and metrics. For high-dimensional datasets such as **Traffic** and **Electricity**, **PCA** was applied to reduce the input dimension to 30 in order to avoid CUDA out-of-memory issues and keep training practical on a single GPU.
 
-### Datasets
-The following datasets were used. Note that for high-dimensional datasets (**Traffic** and **Electricity**), **PCA (Principal Component Analysis)** was applied to reduce the feature dimension to 30 to avoid CUDA Out-Of-Memory (OOM) errors and accelerate training.
+The main observations are straightforward:
+- **PatchTST** remains the strongest general-purpose baseline on several standard benchmarks.
+- **TimeFilter** is especially effective on datasets with stronger frequency-domain regularities.
+- **MHC_iTransformer** is most competitive on the PCA-reduced high-dimensional datasets.
+- **DUET** delivers stable and competitive performance, with particularly strong results on **Traffic**.
 
-| Dataset | Type | Original Dim | Training Dim | Frequency |
+## 2. Experiment Setup
+
+### 2.1 Models
+
+The following models were included in the main comparison:
+1. **TimeFilter**: A recent forecasting model based on frequency-domain filtering.
+2. **iTransformer**: An inverted Transformer architecture for multivariate forecasting.
+3. **MHC_iTransformer**: Our modified iTransformer with multi-head channel attention.
+4. **PatchTST**: A patch-based Transformer baseline.
+5. **LSTM**: A classic recurrent baseline.
+6. **DUET**: An integrated Dual-Explorer time series forecasting model.
+
+In addition, we ran a supplementary experiment with **AttnRes_iTransformer**, an iTransformer variant that introduces Attention Residuals. This model was evaluated separately on **Electricity** to study whether the technique is useful for relatively shallow forecasting networks.
+
+### 2.2 Datasets
+
+The experiments cover seven standard benchmark datasets:
+
+| Dataset | Domain | Original Dim | Training Dim | Frequency |
 | :--- | :--- | :--- | :--- | :--- |
-| **ETTh2** | Transformer Temp | 7 | 7 | Hourly |
-| **ETTm1** | Transformer Temp | 7 | 7 | 15-min |
-| **ETTm2** | Transformer Temp | 7 | 7 | 15-min |
-| **Weather** | Weather | 21 | 21 | 10-min |
+| **ETTh2** | Electricity Transformer Temperature | 7 | 7 | Hourly |
+| **ETTm1** | Electricity Transformer Temperature | 7 | 7 | 15-min |
+| **ETTm2** | Electricity Transformer Temperature | 7 | 7 | 15-min |
+| **Weather** | Meteorology | 21 | 21 | 10-min |
 | **Traffic** | Traffic Flow | 862 | **30 (PCA)** | Hourly |
 | **Electricity** | Electricity Load | 321 | **30 (PCA)** | Hourly |
 | **Exchange** | Exchange Rate | 8 | 8 | Daily |
 
-### Metrics
-- **MAE**: Mean Absolute Error (Lower is better)
-- **MSE**: Mean Squared Error (Lower is better)
-- **RMSE**: Root Mean Squared Error (Lower is better)
-- **nRMSE**: Normalized RMSE (Lower is better)
+### 2.3 Evaluation Metrics
+
+We report four standard regression metrics, where lower values indicate better performance:
+- **MAE**: Mean Absolute Error
+- **MSE**: Mean Squared Error
+- **RMSE**: Root Mean Squared Error
+- **nRMSE**: Normalized RMSE
 
 ## 3. Quantitative Results
 
-The following table presents the test set performance for all models.
+Table 1 summarizes the test-set performance of all models. Bold values indicate the best result within each dataset and metric.
 
 | Dataset | Model | MAE | MSE | RMSE | nRMSE |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -83,40 +98,65 @@ The following table presents the test set performance for all models.
 | | LSTM | 0.2313 | 0.1087 | 0.3297 | 0.0488 |
 | | DUET | 0.2067 | 0.0873 | 0.2954 | 0.0437 |
 
-## 4. Performance Analysis
+## 4. Result Analysis
 
-### 4.1. Overall Comparison
-- **PatchTST**: Demonstrates strong performance, achieving the best results on **ETTh2**, **ETTm1**, and **Exchange**. It remains a robust SOTA baseline.
-- **TimeFilter**: Shows excellent performance on **ETTm2** and **Weather**, confirming its effectiveness in capturing frequency-domain patterns.
-- **MHC_iTransformer**: Performs exceptionally well on the high-dimensional datasets **Traffic** and **Electricity** (after PCA), achieving the lowest MSE/RMSE. This suggests that the multi-head channel attention mechanism is effective even in reduced feature spaces.
-- **DUET**: The newly integrated DUET model is highly competitive. It achieved the best MAE on **Traffic** (0.5277) and is consistently close to the top performers across all datasets. This validates the successful integration and the model's capability.
-- **LSTM**: As expected, LSTM generally lags behind the Transformer-based models but serves as a valid baseline.
+### 4.1 Overall Trends
 
-### 4.2. Impact of PCA on Traffic & Electricity
-Applying PCA (reducing to 30 dimensions) allowed us to successfully train on **Traffic** and **Electricity** without OOM errors. Interestingly, **MHC_iTransformer** and **DUET** adapted very well to these PCA-reduced features, outperforming PatchTST and TimeFilter on these datasets.
+Several clear patterns emerge from the benchmark results:
 
-## 5. Visualizations
+- **PatchTST** is the strongest all-around baseline, achieving the best overall scores on **ETTh2**, **ETTm1**, and **Exchange**.
+- **TimeFilter** performs best on **ETTm2** and **Weather**, suggesting that its frequency-domain inductive bias is well aligned with these datasets.
+- **MHC_iTransformer** is most competitive on **Traffic** and **Electricity**, where it achieves the best MSE, RMSE, and nRMSE after PCA-based dimensionality reduction.
+- **DUET** is consistently competitive and obtains the best MAE on **Traffic**, indicating strong practical accuracy on a challenging high-dimensional dataset.
+- **LSTM**, while still useful as a classical baseline, is generally less competitive than the Transformer-based approaches.
 
-The generated figures in the `figures/` directory provide visual confirmation of these results:
+### 4.2 Best Model by Dataset
 
-1.  **Prediction Comparisons** (`{dataset}_prediction.png`):
-    - Visual inspection of the prediction curves shows that **PatchTST** and **DUET** capture the trend and seasonality very well.
-    - On **Traffic**, the **DUET** model's predictions align closely with the ground truth, supporting its low MAE score.
+Using MSE as the primary reference metric, the best-performing model on each dataset is:
 
-2.  **Metric Comparisons** (`comparison_mae.png`, `comparison_mse.png`):
-    - The bar charts clearly illustrate the leadership of **PatchTST** on ETT datasets and **MHC_iTransformer** on Electricity/Traffic.
-    - **DUET** maintains a balanced performance profile, never being the worst and often challenging the best.
+| Dataset | Best Model | Observation |
+| :--- | :--- | :--- |
+| **ETTh2** | PatchTST | Strong and stable performance on standard ETT benchmarks |
+| **ETTm1** | PatchTST | Slight but consistent edge over the other Transformer variants |
+| **ETTm2** | TimeFilter | Strongest fit for the dataset's spectral characteristics |
+| **Weather** | TimeFilter | Best captures local periodicity and smooth variation |
+| **Traffic** | MHC_iTransformer | Best error profile after PCA reduction; DUET has the best MAE |
+| **Electricity** | MHC_iTransformer | Most effective on PCA-compressed high-dimensional load data |
+| **Exchange** | PatchTST | Best overall generalization on the exchange-rate benchmark |
 
-### 5.1. AttnRes Analysis
-We further conducted a depth experiment (Layers 2, 4, 6, 8) on the Electricity dataset to evaluate **AttnRes**.
-- **Result**: AttnRes_iTransformer consistently performed slightly worse than the baseline iTransformer (+0.3% ~ +2.7% MSE).
-- **Conclusion**: AttnRes is designed for very deep networks (LLMs) to mitigate signal dilution. In time series tasks where models are typically shallow (2-4 layers), the additional complexity of AttnRes does not provide a benefit and may introduce noise. Standard residuals are sufficient for this scale.
+### 4.3 Impact of PCA on Traffic and Electricity
+
+Applying PCA to reduce **Traffic** and **Electricity** to 30 dimensions was a practical necessity for stable training under limited GPU memory. Importantly, dimensionality reduction did not erase the competitiveness of the stronger models. On the contrary, **MHC_iTransformer** and **DUET** remained highly effective in the reduced feature space, and both outperformed several standard baselines on these two datasets.
+
+This result suggests that carefully compressed multivariate inputs can still preserve enough structure for modern forecasting architectures, especially when the model is designed to exploit inter-channel relationships.
+
+### 4.4 Supplementary Analysis of Attention Residuals
+
+We also conducted a depth study on **Electricity** to evaluate **AttnRes_iTransformer**.
+
+- **Observation**: AttnRes_iTransformer performs slightly worse than the baseline iTransformer, with MSE degradation of roughly **0.3% to 2.7%** across the tested depths.
+- **Interpretation**: Attention Residuals were originally proposed to stabilize very deep networks such as large language models. In relatively shallow forecasting architectures, the added complexity does not appear to provide a measurable benefit and may instead introduce unnecessary noise.
+
+For this reason, the current evidence does not support replacing standard residual connections with Attention Residuals in this experimental setting.
+
+## 5. Visual Evidence
+
+The figures in the `figures/` directory are consistent with the quantitative results:
+
+1. **Prediction curves** (`{dataset}_prediction.png`)
+   These plots show that **PatchTST**, **MHC_iTransformer**, and **DUET** generally track the dominant temporal trends well. On **Traffic**, DUET aligns especially closely with the ground truth, which matches its strong MAE result.
+
+2. **Metric comparison charts** (`comparison_mae.png`, `comparison_mse.png`, `comparison_nrmse.png`)
+   The bar charts highlight the broad strength of **PatchTST** on the ETT-style datasets and the advantage of **MHC_iTransformer** on **Traffic** and **Electricity**.
 
 ## 6. Conclusion
-The experiments confirm that:
-1.  **DUET Integration**: The DUET model was successfully integrated and performs competitively, particularly on complex datasets like Traffic.
-2.  **PCA Strategy**: Reducing dimensions to 30 via PCA is a viable strategy for handling large-covariate datasets like Traffic and Electricity, enabling efficient training while maintaining predictive accuracy.
-3.  **Model Selection**:
-    - Use **PatchTST** for general ETT/Exchange tasks.
-    - Use **TimeFilter** for Weather/ETTm2.
-    - Use **MHC_iTransformer** or **DUET** for Traffic/Electricity tasks.
+
+The experiments support the following conclusions:
+
+1. **PatchTST** is the most reliable default choice across standard benchmark datasets.
+2. **TimeFilter** is particularly effective when frequency-domain structure is prominent, as seen on **ETTm2** and **Weather**.
+3. **MHC_iTransformer** is most promising on high-dimensional forecasting tasks after PCA compression, especially on **Traffic** and **Electricity**.
+4. **DUET** has been integrated successfully and delivers competitive, stable performance, with especially strong practical value on **Traffic**.
+5. **AttnRes_iTransformer** does not currently show a clear advantage in shallow time series forecasting settings.
+
+Overall, the benchmark results suggest that no single model dominates every dataset. Model choice should therefore depend on dataset characteristics, computational constraints, and the target evaluation metric.
